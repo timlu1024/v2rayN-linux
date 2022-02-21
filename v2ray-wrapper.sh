@@ -5,7 +5,8 @@ shopt -s nullglob
 USG="Usage:
     $(basename -- "$0") [-u] [-t] [-c]
 
-Update the v2ray config files and run v2ray.
+Update the v2ray config files, test the current config files, select
+the config file to use with its index, and run v2ray.
 
 Options:
     -u      Update the config files using the subscription link.
@@ -13,6 +14,8 @@ Options:
             This is done by trying to access www.google.com via these
             nodes.
     -c      Let the user choose which config file to use (by index).
+            If not specified, choose the config file used last time
+            (a symlink named last.json).
 
 Note that for simplicity the order of the options is fixed (i.e. '-u -c' is
 OK but '-c -u' is invalid). And combination (like '-uc') is not supported.
@@ -31,6 +34,7 @@ fi
 [ "$1" == -u ] && UPDATE=y && shift
 [ "$1" == -t ] && TEST=y && shift && parallel --version > /dev/null
 [ "$1" == -c ] && CHOOSE=y && shift
+[ -n "$1" ] && echo "Unrecognized argument: $1" && exit 1
 TEMPLATE="$(realpath -- "$TEMPLATE")"
 [ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && exit 1
 

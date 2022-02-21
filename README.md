@@ -67,6 +67,8 @@ Options:
             This is done by trying to access www.google.com via these
             nodes.
     -c      Let the user choose which config file to use (by index).
+            If not specified, choose the config file used last time
+            (a symlink named last.json).
 
 Note that for simplicity the order of the options is fixed (i.e. `-u -c` is
 OK but `-c -u` is invalid). And combination (like `-uc`) is not supported.
