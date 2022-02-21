@@ -41,6 +41,8 @@ TEMPLATE=template.json
 CFGDIR=example_dir
 # The directory that contains the v2ray binary
 BINDIR=v2ray-4.44.0
+# Number of concurrent instances when testing nodes
+TESTJOBS=16
 ```
 
 ### 3. Config `template.json`
