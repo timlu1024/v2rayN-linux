@@ -32,7 +32,7 @@ fi
 [ "$1" == -t ] && TEST=y && shift && parallel --version > /dev/null
 [ "$1" == -c ] && CHOOSE=y && shift
 TEMPLATE="$(realpath -- "$TEMPLATE")"
-[ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && return 1
+[ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && exit 1
 
 # Fetch subscription
 [ -n "$UPDATE" ] && ./v2ray-subscr.py -o "$CFGDIR" "$URL"
