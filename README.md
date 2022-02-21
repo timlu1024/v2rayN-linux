@@ -78,8 +78,8 @@ invoke `v2ray-subscr.py` (it's used internally in `v2ray-wrapper.sh`).
 ```
 usage: v2ray-subscr.py [-h] [-v] [-n] [-o OUTPUT] url
 
-Parse a v2rayN subscription link and generate json config files for v2ray into a directory. The
-unused json files in that directory will be removed.
+Parse a v2rayN subscription link and generate json config files for v2ray into
+a directory. The unused json files in that directory will be removed.
 
 positional arguments:
   url                   v2rayN subsription link
