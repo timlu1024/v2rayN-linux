@@ -70,8 +70,8 @@ Options:
             If not specified, choose the config file used last time
             (a symlink named last.json).
 
-Note that for simplicity the order of the options is fixed (i.e. `-u -c` is
-OK but `-c -u` is invalid). And combination (like `-uc`) is not supported.
+Note that for simplicity the order of the options is fixed (i.e. '-u -c' is
+OK but '-c -u' is invalid). And combination (like '-uc') is not supported.
 ```
 
 To have more control over fetching v2rayN subscription link, you can manually
