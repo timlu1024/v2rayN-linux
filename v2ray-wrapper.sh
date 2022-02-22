@@ -3,10 +3,12 @@ set -e
 shopt -s nullglob
 
 USG="Usage:
-    $(basename -- "$0") [-u] [-t] [-c]
+    $(basename -- "$0") [-u] [-t] [-c] [-n] [<cfg>]
 
 Update the v2ray config files, test the current config files, select
 the config file to use with its index, and run v2ray.
+
+    <cfg>   Config file of this script. Default is v2ray-wrapper.cfg.
 
 Options:
     -u      Update the config files using the subscription link.
@@ -16,25 +18,32 @@ Options:
     -c      Let the user choose which config file to use (by index).
             If not specified, choose the config file used last time
             (a symlink named last.json).
+    -n      Don't run v2ray in the end.
 
 Note that for simplicity the order of the options is fixed (i.e. '-u -c' is
 OK but '-c -u' is invalid). And combination (like '-uc') is not supported.
 "
 
-SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
-cd -- "$SCRIPT_DIR"
-source -- "v2ray-wrapper.cfg"
-
-
 # Parse input args
-if [ "$1" == -h ] || [ "$1" == --help ]; then
+if [ "$1" = -h ] || [ "$1" = --help ]; then
     echo "$USG"
     exit 1
 fi
-[ "$1" == -u ] && UPDATE=y && shift
-[ "$1" == -t ] && TEST=y && shift && parallel --version > /dev/null
-[ "$1" == -c ] && CHOOSE=y && shift
+[ "$1" = -u ] && UPDATE=y && shift
+[ "$1" = -t ] && TEST=y && shift && parallel --version > /dev/null
+[ "$1" = -c ] && CHOOSE=y && shift
+[ "$1" = -n ] && NORUN=y && shift
+[ "${1:0:1}" = - ] && echo "Unrecognized option: $1" && exit 1
+[ -n "$1" ] && WRAPPERCFG="$1" && shift
 [ -n "$1" ] && echo "Unrecognized argument: $1" && exit 1
+
+# cd into cfg directory
+WRAPPERCFG="$(realpath -- "${WRAPPERCFG:-v2ray-wrapper.cfg}")"
+[ \! -f "$WRAPPERCFG" ] && echo "Invalid WRAPPERCFG=$WRAPPERCFG" && exit 1
+cd -- "$(dirname -- "$WRAPPERCFG")"
+
+# Source cfg file
+source -- "$WRAPPERCFG"
 TEMPLATE="$(realpath -- "$TEMPLATE")"
 [ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && exit 1
 
@@ -80,20 +89,22 @@ export -f test_node
 # Choose a config file
 if [ -n "$CHOOSE" ]; then
     # Select an index
-    ls -1q "$CFGDIR"/[0-9][0-9]-*.json | xargs basename -a | column
+    find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' -printf '%f\n' | column
     echo -n "Select an index above: "
     read -r CFGIDX
     CFGIDX="$(printf %02d "$CFGIDX")"
     # Verify the index and get the config file name
     CFG=("$CFGDIR"/$CFGIDX-*.json)
     [ ${#CFG[@]} -ne 1 ] && echo "Index matches ${#CFG[@]} files: ${CFG[@]}" && exit 1
-    CFG="$(realpath -- "${CFG[0]}")"
     # Create symlink
-    ln -fs -- "$CFG" "$BINDIR/last.json"
+    pushd "$CFGDIR" &> /dev/null
+    ln -fs -- "$(basename -- "${CFG[0]}")" last.json
+    popd &> /dev/null
 fi
 
 # Run v2ray
+CFGDIR="$(realpath -- "$CFGDIR")"
 cd "$BINDIR"
-echo "*** Using $(readlink last.json)"
-exec ./v2ray -c "$TEMPLATE" -c last.json
+echo "*** Using $(readlink "$CFGDIR"/last.json)"
+[ -z "$NORUN" ] && exec ./v2ray -c "$TEMPLATE" -c "$CFGDIR"/last.json
 

@@ -31,7 +31,7 @@ Copy the `sample-v2ray-wrapper.cfg` to `v2ray-wrapper.cfg` and edit it.
 
 ```
 # Will be sourced by bash
-# Relative paths are based on the script dir
+# Relative paths are relative to this cfg file
 
 # v2rayN subscription link
 URL='https://example.com/...'
@@ -56,10 +56,12 @@ command.
 
 ```
 Usage:
-    v2ray-wrapper.sh [-u] [-t] [-c]
+    v2ray-wrapper.sh [-u] [-t] [-c] [-n] [<cfg>]
 
 Update the v2ray config files, test the current config files, select
 the config file to use with its index, and run v2ray.
+
+    <cfg>   Config file for this script. Default is v2ray-wrapper.cfg.
 
 Options:
     -u      Update the config files using the subscription link.
@@ -69,6 +71,7 @@ Options:
     -c      Let the user choose which config file to use (by index).
             If not specified, choose the config file used last time
             (a symlink named last.json).
+    -n      Don't run v2ray in the end.
 
 Note that for simplicity the order of the options is fixed (i.e. '-u -c' is
 OK but '-c -u' is invalid). And combination (like '-uc') is not supported.
