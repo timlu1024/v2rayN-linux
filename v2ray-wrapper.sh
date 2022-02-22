@@ -9,6 +9,8 @@ Update the v2ray config files, test the current config files, select
 the config file to use with its index, and run v2ray.
 
     <cfg>   Config file of this script. Default is v2ray-wrapper.cfg.
+            This file will be sourced, so you can even put your own
+            scripts here.
 
 Options:
     -u      Update the config files using the subscription link.
