@@ -26,6 +26,8 @@ Note that for simplicity the order of the options is fixed (i.e. '-u -c' is
 OK but '-c -u' is invalid). And combination (like '-uc') is not supported.
 "
 
+SCRIPTDIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+
 # Parse input args
 if [ "$1" = -h ] || [ "$1" = --help ]; then
     echo "$USG"
@@ -39,21 +41,25 @@ fi
 [ -n "$1" ] && WRAPPERCFG="$1" && shift
 [ -n "$1" ] && echo "Unrecognized argument: $1" && exit 1
 
-# cd into cfg directory
+# cd into .cfg directory
 WRAPPERCFG="$(realpath -- "${WRAPPERCFG:-v2ray-wrapper.cfg}")"
 [ \! -f "$WRAPPERCFG" ] && echo "Invalid WRAPPERCFG=$WRAPPERCFG" && exit 1
 cd -- "$(dirname -- "$WRAPPERCFG")"
 
-# Source cfg file
+# Source .cfg file
 source -- "$WRAPPERCFG"
 TEMPLATE="$(realpath -- "$TEMPLATE")"
 [ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && exit 1
 
 # Fetch subscription
-[ -n "$UPDATE" ] && ./v2ray-subscr.py -o "$CFGDIR" "$URL"
+[ -n "$UPDATE" ] && "$SCRIPTDIR"/v2ray-subscr.py -o "$CFGDIR" "$URL"
+
+# Get the list of json config files
+CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' | sort)"
+[ -z "$CFGLIST" ] && echo "json config file not found in $CFGDIR" && exit 1
 
 # Test and remove unusable nodes
-test_node () {
+test-node () {
     TESTCFG="$1"
     [ \! -f "$TESTCFG" ] && echo "Invalid TESTCFG=$TESTCFG" && return 1
     TESTCFGPATH="$(realpath -- "$TESTCFG")"
@@ -84,14 +90,13 @@ test_node () {
     return $RC
 }
 export BINDIR
-export -f test_node
-[ -n "$TEST" ] && parallel -j "$TESTJOBS" "test_node {}" \
-    ::: "$CFGDIR"/[0-9][0-9]-*.json || true
+export -f test-node
+[ -n "$TEST" ] && parallel -rj "$TESTJOBS" "test-node {}" <<< "$CFGLIST" || true
 
 # Choose a config file
 if [ -n "$CHOOSE" ]; then
     # Select an index
-    find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' -printf '%f\n' | column
+    xargs basename -a <<< "$CFGLIST" | column
     echo -n "Select an index above: "
     read -r CFGIDX
     CFGIDX="$(printf %02d "$CFGIDX")"
