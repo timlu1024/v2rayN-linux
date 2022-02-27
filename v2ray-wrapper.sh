@@ -93,6 +93,10 @@ export BINDIR
 export -f test-node
 [ -n "$TEST" ] && parallel -rj "$TESTJOBS" "test-node {}" <<< "$CFGLIST" || true
 
+# Get the list of json config files again
+CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' | sort)"
+[ -z "$CFGLIST" ] && echo "json config file not found in $CFGDIR" && exit 1
+
 # Choose a config file
 if [ -n "$CHOOSE" ]; then
     # Select an index
