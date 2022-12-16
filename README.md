@@ -55,7 +55,8 @@ TESTJOBS=16
 # Verbose mode. Comment out to disable it.
 #VERBOSE=y
 
-# Use xray instead of v2ray. Comment out to disable it.
+# Use xray instead of v2ray. You have to use xray for XTLS.
+# Comment out to disable it.
 #XRAY=y
 
 # Generate a copy of the original config, where the server address is
@@ -124,4 +125,38 @@ options:
                         is overridden by the TLS serverName. This may fix some
                         connection issues. The copy will have '-tlsServ.json' suffix.
 ```
+
+
+## Supported Configs
+
+The content returned by v2rayN subscription link is a base64-encoded string.
+After decoding, we will get line-separated urls.
+
+The following urls are supported (it will give a detailed warning and skip
+the url if something is not supported):
+
+### `vmess://<base64_string>`
+
+- `outbounds[0].settings.vnext[0]`:
+  `address`, `port`, `users[0].id`, `users[0].alterId`
+- `outbounds[0].streamSettings.network`:
+  `tcp`, `ws`
+- `outbounds[0].streamSettings.security`:
+  `none`, `tls`
+- `outbounds[0].streamSettings.tlsSettings`: `serverName`
+- `outbounds[0].streamSettings.wsSettings`: `path`
+
+### `vless://<uuid>@<host>:<port>?...#<desc>`
+
+This format is described [here](https://github.com/XTLS/Xray-core/issues/91).
+
+- `outbounds[0].settings.vnext[0]`:
+  `address`, `port`, `users[0].id`, `users[0].encryption`, `users[0].flow`
+- `outbounds[0].streamSettings.network`:
+  `tcp`, `ws`
+- `outbounds[0].streamSettings.security`:
+  `tls`, `xtls`
+- `outbounds[0].streamSettings.tlsSettings`: `serverName`
+- `outbounds[0].streamSettings.xtlsSettings`: `serverName`
+- `outbounds[0].streamSettings.wsSettings`: `path`
 
