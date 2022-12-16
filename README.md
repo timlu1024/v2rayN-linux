@@ -1,6 +1,7 @@
 # Fetch v2rayN subscription and test node availability on Linux
 
 Some wrapper scripts for [v2ray-core](https://github.com/v2ray/v2ray-core/releases)
+and [xray-core](https://github.com/XTLS/Xray-core)
 on Linux:
 
 1. Fetch v2rayN subscription link and generate json config files.
@@ -22,9 +23,9 @@ Some important files:
 
 ## Usage
 
-### 1. Download v2ray binaries.
+### 1. Download v2ray or xray binaries.
 Extract into this directory, e.g. `v2ray-4.44.0`. It should contain the
-`v2ray` binary.
+`v2ray` binary (or `xray` binary).
 
 ### 2. Config `v2ray-wrapper.sh`
 Copy the `sample-v2ray-wrapper.cfg` to `v2ray-wrapper.cfg` and edit it.
@@ -35,14 +36,35 @@ Copy the `sample-v2ray-wrapper.cfg` to `v2ray-wrapper.cfg` and edit it.
 
 # v2rayN subscription link
 URL='https://example.com/...'
+
+# If not empty, override the default user agent
+USERAGENT=''
+
 # Template json file
 TEMPLATE=template.json
+
 # Destination of the generated config files
 CFGDIR=example_dir
-# The directory that contains the v2ray binary
+
+# The directory that contains the v2ray (or xray) binary
 BINDIR=v2ray-4.44.0
+
 # Number of concurrent instances when testing nodes
 TESTJOBS=16
+
+# Verbose mode. Comment out to disable it.
+#VERBOSE=y
+
+# Use xray instead of v2ray. Comment out to disable it.
+#XRAY=y
+
+# Generate a copy of the original config, where the server address is
+# overridden by the TLS serverName. This may fix some connection issues.
+# The copy will have '-tlsServ.json' suffix.
+# After testing the config files (-t), if we find that the original config
+# is working properly, then the '-tlsServ.json' copy will be deleted.
+# Comment out to disable it.
+#TLSNAMEASSERVER=y
 ```
 
 ### 3. Config `template.json`
@@ -51,8 +73,7 @@ e.g. change local port, log level...).
 
 ### 4. Run `v2ray-wrapper.sh`
 The main script file is `v2ray-wrapper.sh`. To use `-t` (test availability),
-you have to install [GNU Parallel](https://www.gnu.org/software/parallel/)
-command.
+you have to install [GNU Parallel](https://www.gnu.org/software/parallel/).
 
 ```
 Usage:
@@ -83,10 +104,10 @@ To have more control over fetching v2rayN subscription link, you can manually
 invoke `v2ray-subscr.py` (it's used internally in `v2ray-wrapper.sh`).
 
 ```
-usage: v2ray-subscr.py [-h] [-v] [-n] [-o OUTPUT] url
+usage: v2ray-subscr.py [-h] [-v] [-n] [-o OUTPUT] [-a AGENT] [--tlsNameAsServer] url
 
-Parse a v2rayN subscription link and generate json config files for v2ray into
-a directory. The unused json files in that directory will be removed.
+Parse a v2rayN subscription link and generate json config files for v2ray into a
+directory. The unused json files in that directory will be removed.
 
 positional arguments:
   url                   v2rayN subsription link
@@ -97,6 +118,10 @@ options:
   -n, --dryrun          Don't modify anything on disk
   -o OUTPUT, --output OUTPUT
                         Output directory
-
+  -a AGENT, --agent AGENT
+                        User agent for the HTTP request
+  --tlsNameAsServer     Generate a copy of the original config, where the server address
+                        is overridden by the TLS serverName. This may fix some
+                        connection issues. The copy will have '-tlsServ.json' suffix.
 ```
 

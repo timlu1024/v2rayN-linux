@@ -3,7 +3,7 @@ set -e
 shopt -s nullglob
 
 USG="Usage:
-    $(basename -- "$0") [-u] [-t] [-c] [-n] [<cfg>]
+    $(basename -- "$0") [-h|--help] [-u] [-t] [-c] [-n] [<cfg>]
 
 Update the v2ray config files, test the current config files, select
 the config file to use with its index, and run v2ray.
@@ -51,11 +51,15 @@ source -- "$WRAPPERCFG"
 TEMPLATE="$(realpath -- "$TEMPLATE")"
 [ \! -d "$BINDIR" ] && echo "Invalid BINDIR=$BINDIR" && exit 1
 
+# Base command for v2ray/xray
+[ -z "$XRAY" ] && COMM="./v2ray" || COMM="./xray run -format=json"
+
 # Fetch subscription
-[ -n "$UPDATE" ] && "$SCRIPTDIR"/v2ray-subscr.py -o "$CFGDIR" "$URL"
+[ -n "$UPDATE" ] && "$SCRIPTDIR"/v2ray-subscr.py -a "$USERAGENT" -o "$CFGDIR" \
+    ${VERBOSE:+-v} ${TLSNAMEASSERVER:+--tlsNameAsServer} "$URL"
 
 # Get the list of json config files
-CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' | sort)"
+CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9][0-9]-*.json' | sort)"
 [ -z "$CFGLIST" ] && echo "json config file not found in $CFGDIR" && exit 1
 
 # Test and remove unusable nodes
@@ -63,15 +67,16 @@ test-node () {
     TESTCFG="$1"
     [ \! -f "$TESTCFG" ] && echo "Invalid TESTCFG=$TESTCFG" && return 1
     TESTCFGPATH="$(realpath -- "$TESTCFG")"
+    [ -n "$VERBOSE" ] && V2RAYOUT=/dev/stdout || V2RAYOUT=/dev/null
     pushd "$BINDIR" &> /dev/null
     set +e
     for i in {1..3}; do
         PORT=$(($RANDOM % (65530-2000) + 2000))
-        ./v2ray \
+        $COMM \
             -c <(echo '{"inbounds": [
                     {"protocol":"socks","port":'$PORT',"listen":"127.0.0.1"}
                  ]}') \
-            -c "$TESTCFGPATH" > /dev/null &
+            -c "$TESTCFGPATH" > "$V2RAYOUT" &
         PID=$!
         sleep 2
         ERR="$(curl -sSm 4 -o /dev/null -x "socks5h://127.0.0.1:$PORT" \
@@ -85,16 +90,27 @@ test-node () {
     popd &> /dev/null
     if [ $RC -ne 0 ]; then
         echo "Testing failed, removing config: $TESTCFG"
-        rm -f "$TESTCFG" || true
+        rm -f -- "$TESTCFG"
     fi
     return $RC
 }
-export BINDIR
+export BINDIR COMM VERBOSE
 export -f test-node
 [ -n "$TEST" ] && parallel -rj "$TESTJOBS" "test-node {}" <<< "$CFGLIST" || true
 
+# When TLSNAMEASSERVER is set, remove the tlsServ config if the original
+# config exists.
+if [ -n "$TLSNAMEASSERVER" ]; then
+    ORIGCFGLIST="$(find "$CFGDIR"/ -maxdepth 1 \( -name '[0-9][0-9][0-9]-*.json' \
+        -and -not -name '*-tlsServ.json' \) -printf '%f\n')"
+    for f in $ORIGCFGLIST; do
+        f=${f#[0-9][0-9][0-9]-}
+        rm -f -- "$CFGDIR"/[0-9][0-9][0-9]-${f%.json}-tlsServ.json
+    done
+fi
+
 # Get the list of json config files again
-CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9]-*.json' | sort)"
+CFGLIST="$(find "$CFGDIR"/ -maxdepth 1 -name '[0-9][0-9][0-9]-*.json' | sort)"
 [ -z "$CFGLIST" ] && echo "json config file not found in $CFGDIR" && exit 1
 
 # Choose a config file
@@ -103,7 +119,8 @@ if [ -n "$CHOOSE" ]; then
     xargs basename -a <<< "$CFGLIST" | column
     echo -n "Select an index above: "
     read -r CFGIDX
-    CFGIDX="$(printf %02d "$CFGIDX")"
+    CFGIDX="$(sed 's/^0*//' <<< "$CFGIDX")"  # Remove leading zeros
+    CFGIDX="$(printf %03d "$CFGIDX")"
     # Verify the index and get the config file name
     CFG=("$CFGDIR"/$CFGIDX-*.json)
     [ ${#CFG[@]} -ne 1 ] && echo "Index matches ${#CFG[@]} files: ${CFG[@]}" && exit 1
@@ -117,5 +134,5 @@ fi
 CFGDIR="$(realpath -- "$CFGDIR")"
 cd "$BINDIR"
 echo "*** Using $(readlink "$CFGDIR"/last.json)"
-[ -z "$NORUN" ] && exec ./v2ray -c "$TEMPLATE" -c "$CFGDIR"/last.json
+[ -z "$NORUN" ] && exec $COMM -c "$TEMPLATE" -c "$CFGDIR"/last.json
 
