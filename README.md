@@ -143,20 +143,27 @@ the url if something is not supported):
   `tcp`, `ws`
 - `outbounds[0].streamSettings.security`:
   `none`, `tls`
-- `outbounds[0].streamSettings.tlsSettings`: `serverName`
-- `outbounds[0].streamSettings.wsSettings`: `path`
+- `outbounds[0].streamSettings.tlsSettings`:
+  `serverName`
+- `outbounds[0].streamSettings.wsSettings`:
+  `path`
 
-### `vless://<uuid>@<host>:<port>?...#<desc>`
+### `<proto>://<uuid>@<host>:<port>?...#<desc>`
 
-This format is described [here](https://github.com/XTLS/Xray-core/issues/91).
+`<proto>` may be `vless`, `trojan`. This format is described [here](https://github.com/XTLS/Xray-core/issues/91). Currently XTLS must be used for trojan.
 
-- `outbounds[0].settings.vnext[0]`:
+- (vless) `outbounds[0].settings.vnext[0]`:
   `address`, `port`, `users[0].id`, `users[0].encryption`, `users[0].flow`
+- (trojan) `outbounds[0].settings.servers[0]`:
+  `address`, `port`, `password`, `flow`
 - `outbounds[0].streamSettings.network`:
   `tcp`, `ws`
 - `outbounds[0].streamSettings.security`:
   `tls`, `xtls`
-- `outbounds[0].streamSettings.tlsSettings`: `serverName`
-- `outbounds[0].streamSettings.xtlsSettings`: `serverName`
-- `outbounds[0].streamSettings.wsSettings`: `path`
+- `outbounds[0].streamSettings.tlsSettings`:
+  `serverName`
+- `outbounds[0].streamSettings.xtlsSettings`:
+  `serverName`
+- `outbounds[0].streamSettings.wsSettings`:
+  `path`
 

@@ -49,7 +49,7 @@ def parseVlessSubscr(urlParseRes):
     @verbose: verbose mode.
     @return: nodeConfig <dict>.
     """
-    assert urlParseRes.scheme == "vless"
+    assert urlParseRes.scheme == "vless" or urlParseRes.scheme == "trojan"
     nodeConfig = {}
 
     m = re.match(r"^([-\da-f]+)@([^:]+):(\d+)$", urlParseRes.netloc)
@@ -102,13 +102,13 @@ def parseV2rayNSubscr(url, userAgent):
         nodeConfig = None
         if nodeType == "vmess":
             nodeConfig = parseVmessSubscr(urlParseRes)
-        elif nodeType == "vless":
+        elif nodeType == "vless" or nodeType == "trojan":
             nodeConfig = parseVlessSubscr(urlParseRes)
 
         desc = "<unknown>"
         if nodeType == "vmess":
             desc = nodeConfig["ps"]
-        elif nodeType == "vless":
+        elif nodeType == "vless" or nodeType == "trojan":
             desc = urlParseRes.fragment
 
         ret.append((nodeType, desc, nodeConfig))
@@ -168,10 +168,18 @@ def genVlessStreamSettings(nodeConfig):
     ret["security"] = nodeConfig["q_security"]
 
     if ret["security"] == "tls":
+        if "q_sni" in nodeConfig and nodeConfig["q_host"] != nodeConfig["q_sni"]:
+            logger.warning("'host' and 'sni' not match for %s@%s:%d",
+                           nodeConfig["n_uuid"], nodeConfig["n_host"],
+                           nodeConfig["n_port"])
         ret["tlsSettings"] = {
             "serverName": nodeConfig["q_host"],
         }
     elif ret["security"] == "xtls":
+        if "q_sni" in nodeConfig and nodeConfig["q_host"] != nodeConfig["q_sni"]:
+            logger.warning("'host' and 'sni' not match for %s@%s:%d",
+                           nodeConfig["n_uuid"], nodeConfig["n_host"],
+                           nodeConfig["n_port"])
         ret["xtlsSettings"] = {
             "serverName": nodeConfig["q_host"],
         }
@@ -253,6 +261,26 @@ def nodeConfigToV2rayConfig(nodeType, nodeConfig):
                 "streamSettings": streamSettings,
             },
         ]
+    elif nodeType == "trojan":
+        streamSettings = genVlessStreamSettings(nodeConfig)
+        if not streamSettings:
+            return None
+        ret["outbounds"] = [
+            {
+                "protocol": "trojan",
+                "settings": {
+                    "servers": [
+                        {
+                            "address": nodeConfig["n_host"],
+                            "port": nodeConfig["n_port"],
+                            "password": nodeConfig["n_uuid"],
+                            "flow": nodeConfig["q_flow"],
+                        }
+                    ],
+                },
+                "streamSettings": streamSettings,
+            },
+        ]
     else:
         logger.warning("Unsupported nodeType=%s", nodeType)
         return None
@@ -311,7 +339,12 @@ def overrideServerWithTlsName(v2rayConfig):
 
     if tlsName:
         ret = copy.deepcopy(v2rayConfig)
-        ret["outbounds"][0]["settings"]["vnext"][0]["address"] = tlsName
+        if "vnext" in ret["outbounds"][0]["settings"]:
+            ret["outbounds"][0]["settings"]["vnext"][0]["address"] = tlsName
+        elif "servers" in ret["outbounds"][0]["settings"]:
+            ret["outbounds"][0]["settings"]["servers"][0]["address"] = tlsName
+        else:
+            return None
 
     return ret
 
