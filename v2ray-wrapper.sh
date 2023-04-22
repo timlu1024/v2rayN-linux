@@ -80,7 +80,7 @@ test-node () {
         PID=$!
         sleep 2
         ERR="$(curl -sSm 4 -o /dev/null -x "socks5h://127.0.0.1:$PORT" \
-                    "http://www.google.com" 2>&1)"
+                    "https://www.google.com" 2>&1)"
         RC=$?
         kill $PID &> /dev/null
         [ -n "$ERR" ] && echo "$ERR"

@@ -132,8 +132,8 @@ options:
 The content returned by v2rayN subscription link is a base64-encoded string.
 After decoding, we will get line-separated urls.
 
-The following urls are supported (it will give a detailed warning and skip
-the url if something is not supported):
+The following urls are supported (it will show a detailed warning and skip
+the url whenever something is not supported):
 
 ### `vmess://<base64_string>`
 
@@ -150,7 +150,7 @@ the url if something is not supported):
 
 ### `<proto>://<uuid>@<host>:<port>?...#<desc>`
 
-`<proto>` may be `vless`, `trojan`. This format is described [here](https://github.com/XTLS/Xray-core/issues/91). Currently XTLS must be used for trojan.
+`<proto>` may be `vless`, `trojan`. This format is described [here](https://github.com/XTLS/Xray-core/issues/91). Currently XTLS must be used for trojan protocol.
 
 - (vless) `outbounds[0].settings.vnext[0]`:
   `address`, `port`, `users[0].id`, `users[0].encryption`, `users[0].flow`
