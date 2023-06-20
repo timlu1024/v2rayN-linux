@@ -155,14 +155,14 @@ the url whenever something is not supported):
 - (vless) `outbounds[0].settings.vnext[0]`:
   `address`, `port`, `users[0].id`, `users[0].encryption`, `users[0].flow`
 - (trojan) `outbounds[0].settings.servers[0]`:
-  `address`, `port`, `password`, `flow`
+  `address`, `port`, `password`, `flow` (xray only)
 - `outbounds[0].streamSettings.network`:
   `tcp`, `ws`
 - `outbounds[0].streamSettings.security`:
-  `tls`, `xtls`
+  `tls`, `xtls` (deprecated)
 - `outbounds[0].streamSettings.tlsSettings`:
-  `serverName`
-- `outbounds[0].streamSettings.xtlsSettings`:
+  `serverName`, `fingerprint` (xray only)
+- `outbounds[0].streamSettings.xtlsSettings` (deprecated):
   `serverName`
 - `outbounds[0].streamSettings.wsSettings`:
   `path`

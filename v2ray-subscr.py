@@ -160,6 +160,7 @@ def genVlessStreamSettings(nodeConfig):
     """
     Generate "streamSettings" object for VLESS.
     https://www.v2fly.org/config/transport.html#streamsettingsobject
+    https://xtls.github.io/config/transport.html#streamsettingsobject
     @nodeConfig: <dict>
     @return: <dict> or None
     """
@@ -175,7 +176,10 @@ def genVlessStreamSettings(nodeConfig):
         ret["tlsSettings"] = {
             "serverName": nodeConfig["q_host"],
         }
+        if "q_fp" in nodeConfig:
+            ret["tlsSettings"]["fingerprint"] = nodeConfig["q_fp"]
     elif ret["security"] == "xtls":
+        # Deprecated. Removing it later.
         if "q_sni" in nodeConfig and nodeConfig["q_host"] != nodeConfig["q_sni"]:
             logger.warning("'host' and 'sni' not match for %s@%s:%d",
                            nodeConfig["n_uuid"], nodeConfig["n_host"],
