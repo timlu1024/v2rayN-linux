@@ -9,18 +9,18 @@ import argparse
 import re
 import sys
 import os
+import traceback
 
 logger = logging.getLogger(__name__)
 
 
-def strToFileName(str):
+def strToFileName(s):
     """
     Remove the special characters for a file name.
     @return: <string>
     """
-    str = re.sub(r"[^\w\s-]", "", str)
-    str = re.sub(r"[-\s]+", "-", str)
-    return str
+    s = re.sub(r"[-/|\s]+", "-", s)
+    return s
 
 
 def parseVmessSubscr(urlParseRes):
@@ -37,6 +37,7 @@ def parseVmessSubscr(urlParseRes):
     decNodeConfigText = decNodeConfigBytes.decode("utf-8")
     logger.debug("VMESS node config text: %s", decNodeConfigText)
     nodeConfig = json.loads(decNodeConfigText)
+
     logger.debug("VMESS node config: %s", repr(nodeConfig))
     return nodeConfig
 
@@ -53,6 +54,11 @@ def parseVlessSubscr(urlParseRes):
     nodeConfig = {}
 
     m = re.match(r"^([-\da-f]+)@([^:]+):(\d+)$", urlParseRes.netloc)
+    if m is None:
+        logger.warning("Netloc format error: '%s', expecting 'uuid@host:port'",
+                       urlParseRes.netloc)
+        return None
+
     nodeConfig["n_uuid"] = m[1]
     nodeConfig["n_host"] = m[2]
     nodeConfig["n_port"] = int(m[3])
@@ -69,6 +75,11 @@ def parseVlessSubscr(urlParseRes):
                            qk, str(qv))
         nodeConfig[k] = v
 
+    # Add some default values.
+    nodeConfig.setdefault("q_type", "tcp")
+    nodeConfig.setdefault("q_security", "none")
+    nodeConfig.setdefault("q_flow", "none")
+
     logger.debug("VLESS node config: %s", repr(nodeConfig))
     return nodeConfig
 
@@ -79,6 +90,7 @@ def parseV2rayNSubscr(url, userAgent):
     @userAgent: if not empty, override the default user agent.
     @return: array of (type<string>, desc<string>, config<dict>)
     """
+    numSkipped = 0
 
     # Get the content of subscription link
     logger.debug("Getting the content of v2rayN subscription link %s...", url)
@@ -100,20 +112,30 @@ def parseV2rayNSubscr(url, userAgent):
         logger.debug("URL parse result: %s", repr(urlParseRes))
         nodeType = urlParseRes.scheme
         nodeConfig = None
-        if nodeType == "vmess":
-            nodeConfig = parseVmessSubscr(urlParseRes)
-        elif nodeType == "vless" or nodeType == "trojan":
-            nodeConfig = parseVlessSubscr(urlParseRes)
+        try:
+            if nodeType == "vmess":
+                nodeConfig = parseVmessSubscr(urlParseRes)
+            elif nodeType == "vless" or nodeType == "trojan":
+                nodeConfig = parseVlessSubscr(urlParseRes)
+        except Exception as e:
+            btStr = traceback.format_exc()
+            logger.warning("Exception while parsing URL: %s\n%s",
+                           str(e), btStr)
+
+        if nodeConfig is None:
+            logger.warning("Skipped: %s", line)
+            numSkipped += 1
+            continue
 
         desc = "<unknown>"
         if nodeType == "vmess":
             desc = nodeConfig["ps"]
         elif nodeType == "vless" or nodeType == "trojan":
-            desc = urlParseRes.fragment
+            desc = urllib.parse.unquote(urlParseRes.fragment)
 
         ret.append((nodeType, desc, nodeConfig))
 
-    return ret
+    return ret, numSkipped
 
 
 def genVmessStreamSettings(nodeConfig):
@@ -187,6 +209,8 @@ def genVlessStreamSettings(nodeConfig):
         ret["xtlsSettings"] = {
             "serverName": nodeConfig["q_host"],
         }
+    elif ret["security"] == "none":
+        pass
     else:
         logger.warning("Failed to generate streamSettings: " +
                        "security=%s is unsupported",
@@ -227,11 +251,11 @@ def nodeConfigToV2rayConfig(nodeType, nodeConfig):
                     "vnext": [
                         {
                             "address": nodeConfig["add"],
-                            "port": nodeConfig["port"],
+                            "port": int(nodeConfig["port"]),
                             "users": [
                                 {
                                     "id": nodeConfig["id"],
-                                    "alterId": nodeConfig["aid"],
+                                    "alterId": int(nodeConfig["aid"]),
                                 },
                             ],
                         }
@@ -251,7 +275,7 @@ def nodeConfigToV2rayConfig(nodeType, nodeConfig):
                     "vnext": [
                         {
                             "address": nodeConfig["n_host"],
-                            "port": nodeConfig["n_port"],
+                            "port": int(nodeConfig["n_port"]),
                             "users": [
                                 {
                                     "id": nodeConfig["n_uuid"],
@@ -276,7 +300,7 @@ def nodeConfigToV2rayConfig(nodeType, nodeConfig):
                     "servers": [
                         {
                             "address": nodeConfig["n_host"],
-                            "port": nodeConfig["n_port"],
+                            "port": int(nodeConfig["n_port"]),
                             "password": nodeConfig["n_uuid"],
                             "flow": nodeConfig["q_flow"],
                         }
@@ -368,13 +392,13 @@ def main(url, outDir, userAgent="", tlsNameAsServer=False, dryRun=False):
     os.makedirs(outDir, exist_ok=True)
 
     # Fetch url.
-    parseResults = parseV2rayNSubscr(url, userAgent)
+    parseResults, numSkippedParse = parseV2rayNSubscr(url, userAgent)
     dryRunPrefix = ""
     if dryRun:
         dryRunPrefix = "(dryrun) "
 
     # Some stats.
-    numSkipped   = 0
+    numSkipped   = numSkippedParse
     numUpdated   = 0
     numAlready   = 0
     numDeleted   = 0
